@@ -27,36 +27,18 @@ def convert_between_temperature_units(degrees, from_units, to_units)
   end
 end
 
-MELTING_POINTS = {
-  'water' => 0, 'ethanol' => -114, 'gold' => 1_064,
-  'silver' => 961.8, 'copper' => 1_085
+CRITICAL_TEMPERATURES = {
+  'water' => {melting_point: 0, boiling_point: 100},
+  'ethanol' => {melting_point: -114, boiling_point: 78.37},
+  'gold' => {melting_point: 1_064, boiling_point: 2_700},
+  'silver' => {melting_point: 961.8, boiling_point: 2_162},
+  'copper' => {melting_point: 1_085, boiling_point: 2_567}
 }
 
-def melting_point_of_substance(substance, in_which_temperature_unit)
-  if MELTING_POINTS[substance]
-    if in_which_temperature_unit == 'C'
-      MELTING_POINTS[substance]
-    elsif in_which_temperature_unit == 'K'
-      convert_between_temperature_units(MELTING_POINTS[substance], 'C', 'K')
-    elsif in_which_temperature_unit == 'F'
-      convert_between_temperature_units(MELTING_POINTS[substance], 'C', 'F')
-    end
-  end
+def melting_point_of_substance(substance, units)
+  convert_from_celsius(CRITICAL_TEMPERATURES[substance][:melting_point], units)
 end
 
-BOILING_POINTS = {
-  'water' => 100, 'ethanol' => 78.37, 'gold' => 2_700,
-  'silver' => 2_162, 'copper' => 2_567
-}
-
-def boiling_point_of_substance(substance, in_which_temperature_unit)
-  if BOILING_POINTS[substance]
-    if in_which_temperature_unit == 'C'
-      BOILING_POINTS[substance]
-    elsif in_which_temperature_unit == 'K'
-      convert_between_temperature_units(BOILING_POINTS[substance], 'C', 'K')
-    elsif in_which_temperature_unit == 'F'
-      convert_between_temperature_units(BOILING_POINTS[substance], 'C', 'F')
-    end
-  end
+def boiling_point_of_substance(substance, units)
+  convert_from_celsius(CRITICAL_TEMPERATURES[substance][:boiling_point], units)
 end
