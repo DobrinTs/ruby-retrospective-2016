@@ -24,7 +24,10 @@ module DataModelSingletonMethods
   end
 
   def where(criteria)
-    check_for_invalid_keys(criteria, @attribute_names)
+    criteria.keys.reject { |key| @attribute_names.include? key }.each do |key|
+      raise DataModel::UnknownAttributeError.new(key)
+    end
+
     result = []
     @repository.storage.each do |current_hash|
       current_hash = current_hash[1] if current_hash.is_a? Array
@@ -39,6 +42,7 @@ module DataModelSingletonMethods
     result << new_instance
   end
 end
+
 module InitializeHelpers
   def initialize_attributes(names, information_hash)
     names.each do |attribute|
@@ -64,13 +68,6 @@ end
 module Helpers
   include SubHashChecker
   include InitializeHelpers
-  def check_for_invalid_keys(criteria_hash, attribute_names)
-    criteria_hash.each do |key, _|
-      unless attribute_names.include?(key)
-        raise DataModel::UnknownAttributeError, "Unknown attribute  #{key}"
-      end
-    end
-  end
 
   def find_id_for_instance(instance, repository)
     repository.max_used_id += 1
@@ -147,22 +144,25 @@ class DataModel
   include Helpers
   extend Helpers
   extend DataModelSingletonMethods
+
   class DeleteUnsavedRecordError < RuntimeError; end
+
   class UnknownAttributeError < ArgumentError
     def initialize(attribute_name)
       super "Unknown attribute #{attribute_name}"
     end
   end
   attr_accessor :saved_to_repository
+
   def initialize(information_hash = {})
-    names = self.class.instance_variable_get(:@attribute_names)
+    names = self.class.attributes
     initialize_attributes(names, information_hash)
     @saved_to_repository = false
     initialize_singleton_finders(names, self.class)
   end
 
   def hash_information
-    names = self.class.instance_variable_get(:@attribute_names)
+    names = self.class.attributes
     result = {}
     names.each do |attribute|
       result[attribute] = send attribute
@@ -172,22 +172,20 @@ class DataModel
   end
 
   def save
-    repository = self.class.instance_variable_get(:@repository)
     instance = hash_information
     if !@saved_to_repository
-      find_id_for_instance(instance, repository)
+      find_id_for_instance(instance, data_store)
     else
-      repository.update(repository.find({id: @id})[0][:id], instance)
+      data_store.update(data_store.find({id: @id})[0][:id], instance)
     end
     self
   end
 
   def delete
-    repository = self.class.instance_variable_get(:@repository)
-    if repository.find(hash_information) == []
+    if data_store.find(hash_information) == []
       raise DeleteUnsavedRecordError
     else
-      repository.delete(hash_information)
+      data_store.delete(hash_information)
       @saved_to_repository = false
     end
   end
@@ -197,7 +195,13 @@ class DataModel
     if @saved_to_repository && other.saved_to_repository && id == other.id
       true
     else
-      self.equal?(other)
+      equal?(other)
     end
+  end
+
+  private
+
+  def data_store
+    self.class.data_store
   end
 end
