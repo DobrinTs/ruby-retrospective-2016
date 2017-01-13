@@ -3,6 +3,7 @@ module SubHashChecker
     main_hash.merge(sub_hash) == main_hash
   end
 end
+
 module DataModelSingletonMethods
   def data_store(repository = nil)
     if repository
@@ -59,6 +60,7 @@ module InitializeHelpers
     end
   end
 end
+
 module Helpers
   include SubHashChecker
   include InitializeHelpers
@@ -78,6 +80,7 @@ module Helpers
     @saved_to_repository = true
   end
 end
+
 class HashStore
   include Helpers
   attr_reader :storage
@@ -93,28 +96,23 @@ class HashStore
   end
 
   def find(search_hash)
-    result = []
-    @storage.each do |_, current_hash|
-      result << current_hash if sub_hash?(current_hash, search_hash)
+    @storage.values.select do |record|
+      sub_hash?(record, search_hash)
     end
-    result
   end
 
   def update(id, to_overload)
     desired_hash = storage[id]
-    to_overload.each do |key, value|
-      desired_hash[key] = value
-    end
+    desired_hash.merge!(to_overload)
   end
 
   def delete(search_hash)
-    matches = find(search_hash)
-    matches.each do |current_hash|
-      id = current_hash[:id]
-      @storage.delete(id)
+    find(search_hash).each do |current_hash|
+      @storage.delete(current_hash[:id])
     end
   end
 end
+
 class ArrayStore
   include Helpers
   attr_reader :storage
@@ -129,39 +127,32 @@ class ArrayStore
   end
 
   def find(search_hash)
-    result = []
-    @storage.each do |current_hash|
-      result << current_hash if sub_hash?(current_hash, search_hash)
+    @storage.select do |record|
+      sub_hash?(record, search_hash)
     end
-    result
   end
 
   def update(id, to_overload)
-    desired_hash = storage[id]
-    storage.each do |current_hash|
-      if current_hash[:id] == id
-        desired_hash = current_hash
-        break
-      end
-    end
-    to_overload.each do |key, value|
-      desired_hash[key] = value
-    end
+    index = @storage.find_index { |record| record[:id] == id }
+
+    @storage[index] = to_overload
   end
 
   def delete(search_hash)
-    matches = find(search_hash)
-    matches.each do |current_hash|
-      @storage.delete(current_hash)
-    end
+    @storage.reject! { |record| sub_hash? record, search_hash }
   end
 end
+
 class DataModel
   include Helpers
   extend Helpers
   extend DataModelSingletonMethods
   class DeleteUnsavedRecordError < RuntimeError; end
-  class UnknownAttributeError < RuntimeError; end
+  class UnknownAttributeError < ArgumentError
+    def initialize(attribute_name)
+      super "Unknown attribute #{attribute_name}"
+    end
+  end
   attr_accessor :saved_to_repository
   def initialize(information_hash = {})
     names = self.class.instance_variable_get(:@attribute_names)
