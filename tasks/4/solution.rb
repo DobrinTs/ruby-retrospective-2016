@@ -26,16 +26,33 @@ RSpec.describe 'Version' do
     it 'rejects incorrect versions through other version instance' do
       expect { Version.new(Version.new('.9.1')) }.to raise_error(ArgumentError)
     end
+
+    it 'has a correct message when it rejects a version' do
+      expect { Version.new('.4..1') }.to raise_error(
+        ArgumentError,
+        "Invalid version string '.4..1'"
+      )
+    end
   end
 
   context 'Upon comparing versions' do
     it 'compares equal versions' do
       expect(Version.new('1.1.0') == Version.new('1.1')).to eq true
+      expect(Version.new('1.1.0')).to_not eq Version.new('1.2.0')
     end
 
     it 'compares non-equal versions' do
       expect(Version.new('5.3.2') < Version.new('9')).to eq true
       expect(Version.new('5.3.2') > Version.new('2.3.0')).to eq true
+
+      expect(Version.new('5.3.2') > Version.new('9')).to eq false
+      expect(Version.new('5.3.2') < Version.new('2.3.0')).to eq false
+
+      expect(Version.new('5.3.2') <= Version.new('5.3.4')).to eq true
+      expect(Version.new('5.3.2') >= Version.new('5.3.3')).to eq false
+
+      expect(Version.new('5.3.2') <= Version.new('5.3.1')).to eq false
+      expect(Version.new('5.3.2') >= Version.new('5.3.0')).to eq true
     end
 
     it 'compares with spaceship operator' do
@@ -111,6 +128,8 @@ RSpec.describe 'Version' do
       it 'checks versions outside of range when argument is a Version' do
         version_range = Version::Range.new('2', '3')
         expect(version_range.include?(Version.new('7.1.2'))).to eq false
+
+        expect(version_range.include?(Version.new('1.1.2'))).to eq false
       end
 
       it 'checks versions in between when argument is a string' do
